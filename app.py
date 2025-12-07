@@ -5,8 +5,7 @@ import gdown
 from flask import Flask, request, jsonify, render_template
 from preprocessing import TextPreprocessor
 
-MODEL_ZIP_URL = "https://drive.google.com/uc?id=1VghX-4I1tCCsOocOCB9jMMW_98a79GzM"
-
+MODEL_ZIP_URL = os.environ.get("MODEL_ZIP_URL")
 MODEL_DIR = "saved_model"
 MODEL_ZIP_PATH = "saved_model.zip"
 

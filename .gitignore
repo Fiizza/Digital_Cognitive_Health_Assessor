@@ -2,3 +2,4 @@ saved_model/
 *.pkl
 __pycache__/
 Data/
+saved_model.zip

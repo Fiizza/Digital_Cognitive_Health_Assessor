@@ -1,10 +1,9 @@
 Flask
-numpy
-pandas
-scikit-learn
-scipy
-nltk
-lightgbm
-xgboost
-joblib
 gdown
+scikit-learn
+numpy
+scipy
+joblib
+jinja2
+itsdangerous
+Werkzeug

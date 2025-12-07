@@ -13,44 +13,60 @@ MODEL_ZIP_PATH = "saved_model.zip"
 def ensure_model_downloaded():
     """Download and extract saved_model.zip if not already present."""
     if os.path.exists(MODEL_DIR):
-        print("saved_model already exists. Skipping download.")
-        return
+        return  # Already downloaded
 
-    print(" Downloading model from Google Drive...")
+    print("Downloading model from Google Drive...")
     gdown.download(MODEL_ZIP_URL, MODEL_ZIP_PATH, quiet=False)
 
-    print(" Extracting saved_model.zip...")
+    print("Extracting saved_model.zip...")
     with zipfile.ZipFile(MODEL_ZIP_PATH, "r") as z:
         z.extractall(".")
 
     print("Extraction complete.")
 
 
-ensure_model_downloaded()
 
-def load_pickle(path):
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Missing file: {path}")
-    with open(path, "rb") as f:
-        return pickle.load(f)
-
-print(" Loading model files...")
-
-model = load_pickle(os.path.join(MODEL_DIR, "best_model.pkl"))
-vectorizer = load_pickle(os.path.join(MODEL_DIR, "tfidf.pkl"))
-
+model = None
+vectorizer = None
 svd = None
-svd_path = os.path.join(MODEL_DIR, "svd.pkl")
-if os.path.exists(svd_path):
-    svd = load_pickle(svd_path)
-
-label_encoder = load_pickle(os.path.join(MODEL_DIR, "label_encoder.pkl"))
-
+label_encoder = None
 preprocessor = TextPreprocessor()
 
-print(" All artifacts loaded successfully.")
+
+def load_models_once():
+    """Load ML artifacts only once per server invocation."""
+    global model, vectorizer, svd, label_encoder
+
+    if model is not None:
+        return  # Already loaded
+
+    ensure_model_downloaded()
+
+    def load_pickle(path):
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Missing file: {path}")
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    print("Loading model artifacts...")
+
+    model = load_pickle(os.path.join(MODEL_DIR, "best_model.pkl"))
+    vectorizer = load_pickle(os.path.join(MODEL_DIR, "tfidf.pkl"))
+
+    svd_path = os.path.join(MODEL_DIR, "svd.pkl")
+    if os.path.exists(svd_path):
+        global svd
+        svd = load_pickle(svd_path)
+
+    label_encoder_path = os.path.join(MODEL_DIR, "label_encoder.pkl")
+    label_encoder = load_pickle(label_encoder_path)
+
+    print("All model artifacts loaded successfully.")
+
 
 def predict_text(text):
+    load_models_once()  # Ensure model is loaded
+
     processed = preprocessor.preprocess(text)
     X = vectorizer.transform([processed])
 
@@ -80,6 +96,7 @@ def predict_text(text):
 
 app = Flask(__name__)
 
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     prediction = None
@@ -89,13 +106,17 @@ def index():
         text = request.form.get("text", "").strip()
         if text:
             try:
-                res = predict_text(text)
-                prediction = res["label"]
-                confidence = res["confidence"]
+                result = predict_text(text)
+                prediction = result["label"]
+                confidence = result["confidence"]
             except Exception as e:
-                prediction = f"Prediction error: {e}"
+                prediction = f"Error: {e}"
 
-    return render_template("index.html", prediction=prediction, confidence=confidence)
+    return render_template(
+        "index.html",
+        prediction=prediction,
+        confidence=confidence
+    )
 
 
 @app.route("/predict", methods=["POST"])
@@ -105,7 +126,8 @@ def predict_api():
         return jsonify({"error": "No text provided"}), 400
 
     try:
-        return jsonify(predict_text(data["text"]))
+        result = predict_text(data["text"])
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

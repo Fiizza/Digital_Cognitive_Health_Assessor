@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Digital Cognitive Health Assessor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Digital Cognitive Health Assessor</h1>
+
+        <form method="POST" action="/">
+            <textarea name="text" rows="6" placeholder="Enter text here..." required></textarea>
+            <button type="submit">Predict</button>
+        </form>
+
+        {% if prediction is not none %}
+        <div class="result">
+            <p><strong>Predicted Label:</strong> {{ prediction }}</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
